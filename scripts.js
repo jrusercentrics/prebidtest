@@ -1,48 +1,78 @@
-// Check if Cookiebot has granted consent
-function checkCookieConsent() {
-    return Cookiebot.consent.statistics && Cookiebot.consent.marketing;
-}
+// Inicializa o Prebid.js
+var pbjs = pbjs || {};
+pbjs.que = pbjs.que || [];
 
-// Initialize Prebid.js
-function initializePrebid() {
-    var adUnits = [{
-        code: 'ad-container',
-        mediaTypes: {
-            banner: {
-                sizes: [[300, 250]]
-            }
-        },
-        bids: [{
-            bidder: 'pubmatic',
-            params: {
-                publisherId: '123456', // Insira um publisherId válido
-            }
-        }]
-    }];
-
-    pbjs.que.push(function() {
-        pbjs.addAdUnits(adUnits);
-        pbjs.requestBids({
-            bidsBackHandler: function(bidResponses) {
-                console.log('Bid Responses:', bidResponses);
-                // Render ad in container
-                pbjs.renderAd(document.getElementById('ad-container'), bidResponses.adId);
-            }
-        });
-    });
-}
-
-// Wait for Cookiebot to be ready
-window.addEventListener('CookiebotOnAccept', function() {
-    if (checkCookieConsent()) {
-        console.log('Consent granted. Initializing Prebid.');
-        initializePrebid();
-    } else {
-        console.log('No consent granted.');
+// Configuração do CMP (GDPR/CCPA)
+pbjs.que.push(function() {
+  pbjs.setConfig({
+    consentManagement: {
+      gdpr: {
+        cmpApi: 'iab',  // Tipo de CMP (ex.: IAB)
+        timeout: 8000,  // Tempo limite de espera
+        allowAuctionWithoutConsent: false // Não permite leilão sem consentimento
+      },
+      usp: {
+        cmpApi: 'iab', // CCPA
+        timeout: 8000
+      }
     }
+  });
 });
 
-// Fallback: Trigger Prebid if Cookiebot consent is already accepted
-if (Cookiebot && checkCookieConsent()) {
-    initializePrebid();
-}
+// Configuração do UserID Module
+pbjs.que.push(function() {
+  pbjs.setConfig({
+    userSync: {
+      userIds: [
+        {
+          name: 'pubProvidedId',
+          storage: {
+            name: 'pubProvidedId',
+            type: 'html5',
+            expires: 30
+          },
+          params: {
+            eids: [
+              {
+                source: 'example.com',
+                uids: [
+                  { id: '12345', atype: 1 }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  });
+});
+
+// Configuração dos Ad Units
+pbjs.que.push(function() {
+  pbjs.addAdUnits([{
+    code: 'ad-container',
+    mediaTypes: {
+      banner: {
+        sizes: [[300, 250]] // Tamanhos do banner
+      }
+    },
+    bids: [
+      {
+        bidder: 'exampleBidder', // Adaptador de bidder
+        params: {
+          placementId: '12345' // ID do posicionamento do bidder
+        }
+      }
+    ]
+  }]);
+});
+
+// Solicitação de Bids
+pbjs.que.push(function() {
+  pbjs.requestBids({
+    bidsBackHandler: function(bidResponses) {
+      console.log('Bids:', bidResponses);
+      // Aqui você pode conectar o Prebid com o Google Publisher Tag (GPT)
+    }
+  });
+});
